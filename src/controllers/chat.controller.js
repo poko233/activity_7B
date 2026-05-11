@@ -107,14 +107,27 @@ export const handleChatConnection = async ({
     })
   )
 
-  broadcast({
+  ws.send(
+  JSON.stringify({
     type: 'system',
     message: {
       userId: null,
       username: 'Sistema',
-      text: `${chatUser.username} se unió al chat`,
+      text: `Te uniste al chat`,
       createdAt: new Date().toISOString(),
       system: true,
     },
+  })
+)
+
+broadcast({
+  type: 'system',
+  message: {
+    userId: null,
+    username: 'Sistema',
+    text: `${chatUser.username} se unió al chat`,
+    createdAt: new Date().toISOString(),
+    system: true,
+  },
   })
 }
