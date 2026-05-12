@@ -41,3 +41,17 @@ export const createUser = async ({
 
   return result.insertId
 }
+
+export const updateUsernameById = async ({
+  userId,
+  username,
+}) => {
+  await pool.query(
+    `
+      UPDATE users
+      SET username = ?
+      WHERE id = ?
+    `,
+    [username, userId]
+  )
+}

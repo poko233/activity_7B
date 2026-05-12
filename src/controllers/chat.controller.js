@@ -4,13 +4,26 @@ import {
   getMessages,
   saveMessage,
 } from '../services/chat.service.js'
-import { findUserById } from '../services/auth.service.js'
+import {
+  findUserById,
+  updateUsernameById,
+} from '../services/auth.service.js'
 
 const createFallbackUsername = () =>
   `Usuario_${Math.floor(1000 + Math.random() * 9000)}`
 
 const normalizeText = (value) =>
   typeof value === 'string' ? value.trim() : ''
+
+const normalizeAlias = (value) => {
+  const alias = normalizeText(value)
+
+  if (!alias) {
+    return ''
+  }
+
+  return alias.slice(0, 30)
+}
 
 const resolveVisibleUsernameFromUser = ({
   user,
@@ -108,26 +121,49 @@ export const handleChatConnection = async ({
     try {
       const data = JSON.parse(raw.toString())
 
-      if (data.type !== 'message') {
+      if (data.type === 'message') {
+        const text = data.text?.trim()
+
+        if (!text) {
+          return
+        }
+
+        const savedMessage = await saveMessage({
+          userId: chatUser.userId,
+          username: chatUser.username,
+          text,
+        })
+
+        broadcast({
+          type: 'message',
+          message: savedMessage,
+        })
+
         return
       }
 
-      const text = data.text?.trim()
+      if (data.type === 'alias:update') {
+        const username = normalizeAlias(data.username)
 
-      if (!text) {
-        return
+        if (!username) {
+          return
+        }
+
+        chatUser.username = username
+
+        if (chatUser.userId) {
+          await updateUsernameById({
+            userId: chatUser.userId,
+            username,
+          })
+        }
+
+        broadcast({
+          type: 'alias:updated',
+          userId: chatUser.userId,
+          username,
+        })
       }
-
-      const savedMessage = await saveMessage({
-        userId: chatUser.userId,
-        username: chatUser.username,
-        text,
-      })
-
-      broadcast({
-        type: 'message',
-        message: savedMessage,
-      })
     } catch (error) {
       console.error(error)
     }
@@ -141,7 +177,7 @@ export const handleChatConnection = async ({
       message: {
         userId: null,
         username: 'Sistema',
-        text: `${chatUser.username} salió del chat`,
+        text: `${chatUser.username} salio del chat`,
         createdAt: new Date().toISOString(),
         system: true,
       },
@@ -161,26 +197,26 @@ export const handleChatConnection = async ({
   )
 
   ws.send(
-  JSON.stringify({
+    JSON.stringify({
+      type: 'system',
+      message: {
+        userId: null,
+        username: 'Sistema',
+        text: 'Te uniste al chat',
+        createdAt: new Date().toISOString(),
+        system: true,
+      },
+    })
+  )
+
+  broadcast({
     type: 'system',
     message: {
       userId: null,
       username: 'Sistema',
-      text: `Te uniste al chat`,
+      text: `${chatUser.username} se unio al chat`,
       createdAt: new Date().toISOString(),
       system: true,
     },
-  })
-)
-
-broadcast({
-  type: 'system',
-  message: {
-    userId: null,
-    username: 'Sistema',
-    text: `${chatUser.username} se unió al chat`,
-    createdAt: new Date().toISOString(),
-    system: true,
-  },
   })
 }
