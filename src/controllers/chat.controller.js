@@ -71,6 +71,7 @@ const resolveUserFromRequest = async (req) => {
   const requestUrl = new URL(req.url, 'http://localhost')
   const token = requestUrl.searchParams.get('token')
 
+  // El chat permite conexiones sin token para no bloquear sesiones invitadas.
   if (!token) {
     return {
       userId: null,
@@ -158,6 +159,7 @@ export const handleChatConnection = async ({
           })
         }
 
+        // Se propaga para que todos los clientes refresquen alias en historial local.
         broadcast({
           type: 'alias:updated',
           userId: chatUser.userId,
@@ -189,6 +191,7 @@ export const handleChatConnection = async ({
   })
 
   const history = await getMessages()
+  // Se envia primero el historial para hidratar el chat antes de eventos en vivo.
   ws.send(
     JSON.stringify({
       type: 'history',

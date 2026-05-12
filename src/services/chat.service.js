@@ -57,6 +57,7 @@ export const getMessages = async () => {
 
   const parsedRows = rows.map((row) => {
     try {
+      // `messages.content` guarda JSON string; se normaliza para el contrato del chat.
       const parsed = JSON.parse(row.content)
       const userId =
         parsed.userId === undefined ||
@@ -127,6 +128,7 @@ export const getMessages = async () => {
 
     const username = row.isPlainText
       ? row.storedUsername || 'Sistema'
+      // El alias visible siempre prioriza el valor actual en `users.username`.
       : resolveVisibleUsername({
           user,
           userId: row.userId,
