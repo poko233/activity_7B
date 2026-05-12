@@ -9,6 +9,20 @@ export const findUserByEmail = async (email) => {
   return rows[0]
 }
 
+export const findUserById = async (userId) => {
+  const [rows] = await pool.query(
+    `
+      SELECT id, name, username, email
+      FROM users
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [userId]
+  )
+
+  return rows[0] ?? null
+}
+
 export const createUser = async ({
   googleId,
   email,

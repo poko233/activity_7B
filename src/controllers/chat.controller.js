@@ -4,9 +4,55 @@ import {
   getMessages,
   saveMessage,
 } from '../services/chat.service.js'
+import { findUserById } from '../services/auth.service.js'
 
 const createFallbackUsername = () =>
   `Usuario_${Math.floor(1000 + Math.random() * 9000)}`
+
+const normalizeText = (value) =>
+  typeof value === 'string' ? value.trim() : ''
+
+const resolveVisibleUsernameFromUser = ({
+  user,
+  userId,
+  decoded,
+}) => {
+  if (user) {
+    const username = normalizeText(user.username)
+    if (username) {
+      return username
+    }
+
+    const name = normalizeText(user.name)
+    if (name) {
+      return name
+    }
+
+    const numericUserId = Number(user.id)
+    if (Number.isFinite(numericUserId)) {
+      return `Usuario_${numericUserId}`
+    }
+  }
+
+  const numericUserId = Number(userId)
+  if (Number.isFinite(numericUserId)) {
+    return `Usuario_${numericUserId}`
+  }
+
+  const decodedUsername =
+    normalizeText(decoded?.username) ||
+    normalizeText(decoded?.name)
+  if (decodedUsername) {
+    return decodedUsername
+  }
+
+  const decodedEmail = normalizeText(decoded?.email)
+  if (decodedEmail) {
+    return decodedEmail
+  }
+
+  return createFallbackUsername()
+}
 
 const resolveUserFromRequest = async (req) => {
   const requestUrl = new URL(req.url, 'http://localhost')
@@ -25,14 +71,21 @@ const resolveUserFromRequest = async (req) => {
       process.env.JWT_SECRET
     )
 
-    const username =
-      decoded?.username ||
-      decoded?.name ||
-      decoded?.email ||
-      createFallbackUsername()
+    const decodedUserId = Number(decoded?.id)
+    const userId = Number.isFinite(decodedUserId)
+      ? decodedUserId
+      : null
+    const user = userId
+      ? await findUserById(userId)
+      : null
+    const username = resolveVisibleUsernameFromUser({
+      user,
+      userId,
+      decoded,
+    })
 
     return {
-      userId: decoded?.id ?? null,
+      userId,
       username,
     }
   } catch (_) {
